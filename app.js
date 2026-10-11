@@ -1,5 +1,5 @@
 /**
- * Europe Defense Tracker — interactive briefing
+ * State of Europe — interactive briefing
  */
 
 const FRONTLINE = new Set(["PL", "EE", "LV", "LT", "FI", "RO"]);

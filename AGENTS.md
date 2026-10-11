@@ -20,7 +20,14 @@ Make Europe’s post-2022 defence buildup inspectable: spending first, then (lat
 | `data/germany_*.csv` | Germany national / SIPRI overlays |
 | `scripts/generate_nato_expenditure.py` | Regenerates the NATO CSV from embedded tables |
 | `index.html` / `app.js` / `styles.css` / `data.json` | Static briefing site (GitHub Pages) |
-| `README.md` | Schema, metric definitions, update checklist |
+| `README.md` | Minimal public blurb (keep static) |
+
+## Hosting
+
+- **Live site:** https://timnooren.github.io/state-of-europe/
+- **Repo:** https://github.com/TimNooren/state-of-europe (site files at repo root)
+- **GitHub Pages:** legacy branch deploy from **`main`** / **`/`** (root). A push to `main` rebuilds the site; no Actions workflow required.
+- Fine-grained PATs can push Contents but typically cannot create/change the Pages config via API — enable or adjust Pages in the repo Settings UI if needed.
 
 ## Conventions
 

@@ -21,6 +21,12 @@ const ISO_NUMERIC = {
 };
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const LIST_PREVIEW = 12;
+
+/** Shared selected ISO for country panel + rank lists */
+let selectedIso = "PL";
+let onCountryChange = null;
+const listRepaints = [];
 
 async function main() {
   const data = await fetch("./data.json").then((r) => {
@@ -30,15 +36,30 @@ async function main() {
 
   setupHeader();
   renderSources(data.sources);
+  setupCountryPanel(data.countries);
   renderGdpBars(data.countries);
-  setupMixChart(data.countries);
-  setupExplorer(data.countries);
   renderPersonnel(data);
   drawTotalChart(data);
   drawThresholdChart(data);
   drawEquipChart(data);
   animateFigures();
   await drawHeroMap(data.countries);
+}
+
+function setSelectedCountry(iso, { scrollToPanel = false } = {}) {
+  if (!iso) return;
+  if (iso === selectedIso) {
+    if (scrollToPanel) document.getElementById("countries")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  selectedIso = iso;
+  const select = document.getElementById("country-select");
+  if (select && select.value !== iso) select.value = iso;
+  listRepaints.forEach((fn) => fn());
+  if (onCountryChange) onCountryChange(iso);
+  if (scrollToPanel) {
+    document.getElementById("countries")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 function setupHeader() {
@@ -529,50 +550,96 @@ function drawEquipChart(data) {
 /* Country section                                                            */
 /* -------------------------------------------------------------------------- */
 
+function renderBarList(root, rows, { valueFmt, max, toggleId, selectable, scrollOnSelect = false }) {
+  const toggle = toggleId ? document.getElementById(toggleId) : null;
+  let expanded = false;
+
+  const paint = () => {
+    let visible =
+      expanded || rows.length <= LIST_PREVIEW ? rows : rows.slice(0, LIST_PREVIEW);
+    if (!expanded && selectable && rows.length > LIST_PREVIEW) {
+      const sel = rows.find((r) => r.iso === selectedIso);
+      if (sel && !visible.some((r) => r.iso === selectedIso)) {
+        visible = [...visible, sel];
+      }
+    }
+    root.innerHTML = visible
+      .map((r) => {
+        const selected = selectable && r.iso === selectedIso ? "is-selected" : "";
+        const front = FRONTLINE.has(r.iso) ? "is-front" : "";
+        const guide = r.guide ? "is-guide" : "";
+        return `
+      <button type="button" class="gdp-row ${front} ${guide} ${selected}" data-iso="${r.iso}" role="listitem">
+        <span class="gdp-name" title="${r.name}">${r.name}</span>
+        <div class="gdp-track"><div class="gdp-fill" data-width="${(r.value / max) * 100}"></div></div>
+        <span class="gdp-val">${valueFmt(r.value)}</span>
+      </button>`;
+      })
+      .join("");
+
+    if (toggle) {
+      const needsToggle = rows.length > LIST_PREVIEW;
+      toggle.hidden = !needsToggle;
+      toggle.textContent = expanded
+        ? "Show top countries"
+        : `Show all ${rows.length} Allies`;
+    }
+
+    const fills = root.querySelectorAll(".gdp-fill");
+    const expandBars = () => fills.forEach((el) => { el.style.width = `${el.dataset.width}%`; });
+    if (reduceMotion) expandBars();
+    else requestAnimationFrame(() => requestAnimationFrame(expandBars));
+  };
+
+  if (selectable) {
+    root.addEventListener("click", (e) => {
+      const row = e.target.closest(".gdp-row[data-iso]");
+      if (!row) return;
+      setSelectedCountry(row.dataset.iso, { scrollToPanel: scrollOnSelect });
+    });
+  }
+
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      expanded = !expanded;
+      paint();
+    });
+  }
+
+  listRepaints.push(paint);
+  paint();
+  return paint;
+}
+
 function renderGdpBars(countries) {
   const root = document.getElementById("gdp-bars");
   const rows = countries
     .map((c) => ({
       name: c.name,
       iso: c.iso2,
-      gdp: c.years["2024"]?.defence_expenditure_share_of_gdp,
+      value: c.years["2024"]?.defence_expenditure_share_of_gdp,
+      guide: true,
     }))
-    .filter((r) => r.gdp != null)
-    .sort((a, b) => b.gdp - a.gdp);
+    .filter((r) => r.value != null)
+    .sort((a, b) => b.value - a.value);
 
-  const max = 4.5;
-  root.innerHTML = rows
-    .map(
-      (r) => `
-      <div class="gdp-row ${FRONTLINE.has(r.iso) ? "is-front" : ""} is-guide" data-iso="${r.iso}" role="listitem">
-        <span class="gdp-name" title="${r.name}">${r.name}</span>
-        <div class="gdp-track"><div class="gdp-fill" data-width="${(r.gdp / max) * 100}"></div></div>
-        <span class="gdp-val">${r.gdp.toFixed(2)}</span>
-      </div>`
-    )
-    .join("");
-
-  const fills = root.querySelectorAll(".gdp-fill");
-  const expand = () => fills.forEach((el) => { el.style.width = `${el.dataset.width}%`; });
-  const io = new IntersectionObserver(
-    (entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        expand();
-        io.disconnect();
-      }
-    },
-    { threshold: 0.15 }
-  );
-  io.observe(root);
-  setTimeout(expand, 1600);
+  renderBarList(root, rows, {
+    valueFmt: (v) => v.toFixed(2),
+    max: 4.5,
+    toggleId: "gdp-toggle",
+    selectable: true,
+    scrollOnSelect: false,
+  });
 }
 
-function setupMixChart(countries) {
-  const select = document.getElementById("mix-country");
+function setupCountryPanel(countries) {
+  const select = document.getElementById("country-select");
   const canvas = document.getElementById("chart-mix");
+  const detail = document.getElementById("country-detail");
   const sorted = [...countries].sort((a, b) => a.name.localeCompare(b.name));
+
   select.innerHTML = sorted.map((c) => `<option value="${c.iso2}">${c.name}</option>`).join("");
-  select.value = "PL";
+  select.value = selectedIso;
 
   document.getElementById("legend-mix").innerHTML = `
     <span><i style="background:${MIX_COLORS.equipment}"></i>Equipment</span>
@@ -581,15 +648,26 @@ function setupMixChart(countries) {
     <span><i style="background:${MIX_COLORS.other}"></i>Other</span>
   `;
 
-  const paint = (progress) => {
-    const country = countries.find((c) => c.iso2 === select.value);
+  const paintMix = (progress) => {
+    const country = countries.find((c) => c.iso2 === selectedIso);
     if (!country) return;
     drawMixChart(canvas, country, progress);
   };
 
-  observeDraw(canvas, paint);
-  select.addEventListener("change", () => paint(1));
-  window.addEventListener("resize", () => paint(1));
+  const showDetail = () => {
+    const c = countries.find((x) => x.iso2 === selectedIso);
+    detail.innerHTML = renderCountryDetail(c);
+  };
+
+  onCountryChange = () => {
+    paintMix(1);
+    showDetail();
+  };
+
+  observeDraw(canvas, paintMix);
+  select.addEventListener("change", () => setSelectedCountry(select.value));
+  window.addEventListener("resize", () => paintMix(1));
+  showDetail();
 }
 
 function drawMixChart(canvas, country, progress) {
@@ -634,24 +712,8 @@ function drawMixChart(canvas, country, progress) {
   });
 }
 
-function setupExplorer(countries) {
-  const select = document.getElementById("country-select");
-  const detail = document.getElementById("country-detail");
-  const sorted = [...countries].sort((a, b) => a.name.localeCompare(b.name));
-
-  select.innerHTML = sorted.map((c) => `<option value="${c.iso2}">${c.name}</option>`).join("");
-  select.value = "PL";
-
-  const show = (iso) => {
-    const c = countries.find((x) => x.iso2 === iso);
-    detail.innerHTML = renderCountryDetail(c);
-  };
-
-  select.addEventListener("change", () => show(select.value));
-  show("PL");
-}
-
 function renderCountryDetail(c) {
+  if (!c) return "";
   const y24 = c.years["2024"] || {};
   const y21 = c.years["2021"] || {};
   const gdp24 = y24.defence_expenditure_share_of_gdp;
@@ -701,42 +763,45 @@ function renderCountryDetail(c) {
         <small>IISS · full-time</small>
       </div>
     </dl>
-    <div class="detail-table-wrap">
-      <table class="detail-table">
-        <thead>
-          <tr>
-            <th>Metric</th>
-            ${years.map((y) => `<th>${Number(y) >= 2024 ? y + "e" : y}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>% of GDP</td>
-            ${years.map((y) => cell(c.years[y]?.defence_expenditure_share_of_gdp, 2)).join("")}
-          </tr>
-          <tr>
-            <td>USD million</td>
-            ${years.map((y) => cell(c.years[y]?.defence_expenditure_current_usd, 0)).join("")}
-          </tr>
-          <tr>
-            <td>Equipment %</td>
-            ${years.map((y) => cell(c.years[y]?.equipment_share_of_defence_expenditure, 1)).join("")}
-          </tr>
-          <tr>
-            <td>Personnel %</td>
-            ${years.map((y) => cell(c.years[y]?.personnel_share_of_defence_expenditure, 1)).join("")}
-          </tr>
-          <tr>
-            <td>Infrastructure %</td>
-            ${years.map((y) => cell(c.years[y]?.infrastructure_share_of_defence_expenditure, 1)).join("")}
-          </tr>
-          <tr>
-            <td>Other %</td>
-            ${years.map((y) => cell(c.years[y]?.other_share_of_defence_expenditure, 1)).join("")}
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <details class="detail-years">
+      <summary>Year-by-year figures</summary>
+      <div class="detail-table-wrap">
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              ${years.map((y) => `<th>${Number(y) >= 2024 ? y + "e" : y}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>% of GDP</td>
+              ${years.map((y) => cell(c.years[y]?.defence_expenditure_share_of_gdp, 2)).join("")}
+            </tr>
+            <tr>
+              <td>USD million</td>
+              ${years.map((y) => cell(c.years[y]?.defence_expenditure_current_usd, 0)).join("")}
+            </tr>
+            <tr>
+              <td>Equipment %</td>
+              ${years.map((y) => cell(c.years[y]?.equipment_share_of_defence_expenditure, 1)).join("")}
+            </tr>
+            <tr>
+              <td>Personnel %</td>
+              ${years.map((y) => cell(c.years[y]?.personnel_share_of_defence_expenditure, 1)).join("")}
+            </tr>
+            <tr>
+              <td>Infrastructure %</td>
+              ${years.map((y) => cell(c.years[y]?.infrastructure_share_of_defence_expenditure, 1)).join("")}
+            </tr>
+            <tr>
+              <td>Other %</td>
+              ${years.map((y) => cell(c.years[y]?.other_share_of_defence_expenditure, 1)).join("")}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
   `;
 }
 
@@ -761,11 +826,9 @@ function renderPersonnel(data) {
             2
         );
   const top = sorted[0];
-  const nl = countries.find((c) => c.iso2 === "NL");
 
   setKpi("kpi-active", activeSum);
   setKpi("kpi-median", median);
-  if (nl) setKpi("kpi-nl", nl.personnel.active_personnel);
 
   const topName = document.getElementById("kpi-top-name");
   const topNote = document.getElementById("kpi-top-note");
@@ -779,31 +842,19 @@ function renderPersonnel(data) {
 
   const maxActive = sorted[0]?.personnel.active_personnel || 1;
   const bars = document.getElementById("personnel-bars");
-  bars.innerHTML = sorted
-    .map((c) => {
-      const a = c.personnel.active_personnel;
-      return `
-      <div class="gdp-row ${FRONTLINE.has(c.iso2) ? "is-front" : ""}" data-iso="${c.iso2}" role="listitem">
-        <span class="gdp-name" title="${c.name}">${c.name}</span>
-        <div class="gdp-track"><div class="gdp-fill" data-width="${(a / maxActive) * 100}"></div></div>
-        <span class="gdp-val">${a.toLocaleString("en-US")}</span>
-      </div>`;
-    })
-    .join("");
+  const rows = sorted.map((c) => ({
+    name: c.name,
+    iso: c.iso2,
+    value: c.personnel.active_personnel,
+  }));
 
-  const fills = bars.querySelectorAll(".gdp-fill");
-  const expand = () => fills.forEach((el) => { el.style.width = `${el.dataset.width}%`; });
-  const io = new IntersectionObserver(
-    (entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        expand();
-        io.disconnect();
-      }
-    },
-    { threshold: 0.12 }
-  );
-  io.observe(bars);
-  setTimeout(expand, 1800);
+  renderBarList(bars, rows, {
+    valueFmt: (v) => v.toLocaleString("en-US"),
+    max: maxActive,
+    toggleId: "personnel-toggle",
+    selectable: true,
+    scrollOnSelect: false,
+  });
 
   const tbody = document.querySelector("#personnel-table tbody");
   const byName = [...countries].sort((a, b) => a.name.localeCompare(b.name));

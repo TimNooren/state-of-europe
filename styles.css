@@ -422,13 +422,27 @@ strong {
   min-width: 0;
 }
 
-.gdp-bars {
+.gdp-bars,
+.personnel-bars {
   display: flex;
   flex-direction: column;
   gap: 0.22rem;
   max-height: 560px;
   overflow: auto;
   padding-right: 0.2rem;
+}
+
+.personnel-bars {
+  max-height: 640px;
+}
+
+.detail-table .col-secondary {
+  color: var(--steel);
+  font-weight: 400;
+}
+
+.detail-table th.col-secondary {
+  font-weight: 500;
 }
 
 .gdp-row {
@@ -488,7 +502,8 @@ strong {
     grid-template-columns: 1fr;
   }
 
-  .gdp-bars {
+  .gdp-bars,
+  .personnel-bars {
     max-height: 380px;
   }
 }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>State of Europe</title>
-  <meta name="description" content="European NATO defence expenditure, 2021–2025. Public sources, every figure traceable." />
+  <meta name="description" content="European NATO defence expenditure and military personnel. Public sources, every figure traceable." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -17,6 +17,7 @@
       <nav class="site-nav" aria-label="Primary">
         <a href="#aggregate">Overview</a>
         <a href="#countries">Countries</a>
+        <a href="#personnel">Personnel</a>
         <a href="#sources">Sources</a>
       </nav>
     </div>
@@ -145,11 +146,75 @@
       </div>
     </section>
 
+    <!-- PERSONNEL -->
+    <section class="block" id="personnel" aria-labelledby="personnel-title">
+      <div class="block-head">
+        <h2 id="personnel-title">Active military personnel</h2>
+        <p>
+          Full-time / active-duty strength only — not reserves or paramilitary.
+          IISS Military Balance figures (via Wikipedia). Separate from NATO personnel <em>spending</em>.
+        </p>
+      </div>
+
+      <div class="kpis" aria-label="Personnel headline figures">
+        <article class="kpi">
+          <p class="kpi-val" id="kpi-active" data-count="0" data-suffix="">0</p>
+          <p class="kpi-label">Active duty, European NATO</p>
+          <p class="kpi-note">IISS · standing forces</p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-val" id="kpi-top-name">—</p>
+          <p class="kpi-label">Largest active force</p>
+          <p class="kpi-note" id="kpi-top-note">—</p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-val" id="kpi-median" data-count="0" data-suffix="">0</p>
+          <p class="kpi-label">Median country</p>
+          <p class="kpi-note">Active personnel</p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-val" id="kpi-nl" data-count="0" data-suffix="">0</p>
+          <p class="kpi-label">Netherlands</p>
+          <p class="kpi-note">Active duty</p>
+        </article>
+      </div>
+
+      <div class="chart-grid">
+        <article class="chart-card chart-wide">
+          <div class="chart-head">
+            <h3>Active duty by country</h3>
+            <p class="chart-unit">Persons · sorted descending · IISS active military</p>
+          </div>
+          <div id="personnel-bars" class="personnel-bars" role="list"></div>
+        </article>
+      </div>
+
+      <article class="chart-card" style="margin-top: 1rem;">
+        <div class="chart-head">
+          <h3>Active strength table</h3>
+          <p class="chart-unit">Reserve / paramilitary shown only for context — not in the bar chart</p>
+        </div>
+        <div class="detail-table-wrap">
+          <table class="detail-table" id="personnel-table">
+            <thead>
+              <tr>
+                <th>Country</th>
+                <th>Active</th>
+                <th class="col-secondary">Reserve</th>
+                <th class="col-secondary">Paramilitary</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
     <!-- SOURCES -->
-    <section class="block" id="sources" aria-labelledby="sources-title">
+    <section class="block block-alt" id="sources" aria-labelledby="sources-title">
       <div class="block-head">
         <h2 id="sources-title">Sources &amp; notes</h2>
-        <p>Every figure is traceable to a public publisher. Do not mix NATO, national-budget, and SIPRI definitions without labeling.</p>
+        <p>Every figure is traceable to a public publisher. Do not mix NATO, national-budget, SIPRI, and GFP personnel definitions without labeling.</p>
       </div>
 
       <div class="sources-grid">
@@ -161,10 +226,12 @@
             <li>2024–2025 are NATO estimates (marked <sup>e</sup>).</li>
             <li>Absolute category amounts = total × category share ÷ 100.</li>
             <li>Germany 2025 NATO national-currency, USD, and GDP-share cells were unavailable at the 3 June 2025 cut-off.</li>
-            <li>Dataset accessed 10 October 2026.</li>
+            <li>Personnel: compare <strong>active</strong> (IISS full-time) only; reserve/paramilitary are secondary.</li>
+            <li>Spending dataset accessed 10 October 2026; personnel 11 October 2026.</li>
           </ul>
           <p class="methods-cta">
             <a href="data/nato_defence_expenditure.csv">Download NATO CSV</a>
+            <a href="data/military_personnel.csv">Download personnel CSV</a>
             <a href="README.md">Schema &amp; definitions</a>
           </p>
         </div>

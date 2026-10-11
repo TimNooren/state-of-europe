@@ -33,6 +33,7 @@ async function main() {
   renderGdpBars(data.countries);
   setupMixChart(data.countries);
   setupExplorer(data.countries);
+  renderPersonnel(data);
   drawTotalChart(data);
   drawThresholdChart(data);
   drawEquipChart(data);
@@ -103,7 +104,12 @@ function formatCount(val, prefix, suffix, decimals) {
   if (suffix === "bn" || suffix === "%") {
     return `${prefix}${Math.round(val)}${suffix === "bn" ? "bn" : "%"}`;
   }
-  return `${prefix}${Math.round(val)}${suffix}`;
+  const n = Math.round(val);
+  const body =
+    !suffix && !prefix && Math.abs(n) >= 1000
+      ? n.toLocaleString("en-US")
+      : String(n);
+  return `${prefix}${body}${suffix}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -689,6 +695,11 @@ function renderCountryDetail(c) {
         <dd>${eq24 != null ? eq24.toFixed(1) + "%" : "—"}</dd>
         <small>Share 2024e</small>
       </div>
+      <div class="detail-stat">
+        <dt>Active duty</dt>
+        <dd>${c.personnel?.active_personnel != null ? fmt(c.personnel.active_personnel, 0) : "—"}</dd>
+        <small>IISS · full-time</small>
+      </div>
     </dl>
     <div class="detail-table-wrap">
       <table class="detail-table">
@@ -727,6 +738,94 @@ function renderCountryDetail(c) {
       </table>
     </div>
   `;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Personnel                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function renderPersonnel(data) {
+  const countries = data.countries.filter((c) => c.personnel);
+  const sorted = [...countries].sort(
+    (a, b) => b.personnel.active_personnel - a.personnel.active_personnel
+  );
+  const actives = sorted.map((c) => c.personnel.active_personnel);
+  const activeSum = actives.reduce((s, v) => s + v, 0);
+  const mid = Math.floor(actives.length / 2);
+  const median =
+    actives.length % 2
+      ? [...actives].sort((a, b) => a - b)[mid]
+      : Math.round(
+          ([...actives].sort((a, b) => a - b)[mid - 1] +
+            [...actives].sort((a, b) => a - b)[mid]) /
+            2
+        );
+  const top = sorted[0];
+  const nl = countries.find((c) => c.iso2 === "NL");
+
+  setKpi("kpi-active", activeSum);
+  setKpi("kpi-median", median);
+  if (nl) setKpi("kpi-nl", nl.personnel.active_personnel);
+
+  const topName = document.getElementById("kpi-top-name");
+  const topNote = document.getElementById("kpi-top-note");
+  if (top && topName) {
+    topName.textContent = top.name;
+    topName.removeAttribute("data-count");
+  }
+  if (top && topNote) {
+    topNote.textContent = `${top.personnel.active_personnel.toLocaleString("en-US")} active`;
+  }
+
+  const maxActive = sorted[0]?.personnel.active_personnel || 1;
+  const bars = document.getElementById("personnel-bars");
+  bars.innerHTML = sorted
+    .map((c) => {
+      const a = c.personnel.active_personnel;
+      return `
+      <div class="gdp-row ${FRONTLINE.has(c.iso2) ? "is-front" : ""}" data-iso="${c.iso2}" role="listitem">
+        <span class="gdp-name" title="${c.name}">${c.name}</span>
+        <div class="gdp-track"><div class="gdp-fill" data-width="${(a / maxActive) * 100}"></div></div>
+        <span class="gdp-val">${a.toLocaleString("en-US")}</span>
+      </div>`;
+    })
+    .join("");
+
+  const fills = bars.querySelectorAll(".gdp-fill");
+  const expand = () => fills.forEach((el) => { el.style.width = `${el.dataset.width}%`; });
+  const io = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        expand();
+        io.disconnect();
+      }
+    },
+    { threshold: 0.12 }
+  );
+  io.observe(bars);
+  setTimeout(expand, 1800);
+
+  const tbody = document.querySelector("#personnel-table tbody");
+  const byName = [...countries].sort((a, b) => a.name.localeCompare(b.name));
+  tbody.innerHTML = byName
+    .map((c) => {
+      const p = c.personnel;
+      const n = (v) => v.toLocaleString("en-US");
+      return `<tr>
+        <td>${c.name}</td>
+        <td><strong>${n(p.active_personnel)}</strong></td>
+        <td class="col-secondary">${n(p.reserve_personnel)}</td>
+        <td class="col-secondary">${n(p.paramilitary_personnel)}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function setKpi(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.dataset.count = String(value);
+  el.textContent = value.toLocaleString("en-US");
 }
 
 /* -------------------------------------------------------------------------- */

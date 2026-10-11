@@ -154,6 +154,7 @@ async function drawHeroMap(countries) {
   } catch {
     paintFallbackHero(ctx, canvas);
     canvas.classList.add("is-ready");
+    canvas.parentElement?.classList.add("is-fallback");
     return;
   }
 
@@ -309,7 +310,7 @@ function chartSurface(canvas) {
 function drawAxes(ctx, plot, { yMin, yMax, yTicks, xLabels }) {
   const { x, y, w, h } = plot;
   ctx.lineWidth = 1;
-  ctx.font = `11px ${FONT}`;
+  ctx.font = `12px ${FONT}`;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
 
@@ -320,7 +321,7 @@ function drawAxes(ctx, plot, { yMin, yMax, yTicks, xLabels }) {
     ctx.moveTo(x, yy);
     ctx.lineTo(x + w, yy);
     ctx.stroke();
-    ctx.fillStyle = "#5a6f82";
+    ctx.fillStyle = "#4a6072";
     ctx.fillText(formatAxis(tick), x - 7, yy);
   }
 
@@ -417,8 +418,8 @@ function drawTotalChart(data) {
         ctx.textBaseline = "bottom";
         ctx.fillText(`$${Math.round(v)}`, x + barW / 2, y - 5);
         if (incomplete) {
-          ctx.fillStyle = "#5a6f82";
-          ctx.font = `10px ${FONT}`;
+          ctx.fillStyle = "#4a6072";
+          ctx.font = `11px ${FONT}`;
           ctx.fillText("ex-DE", x + barW / 2, y - 20);
         }
       }
@@ -484,8 +485,8 @@ function drawThresholdChart(data) {
 function drawEquipChart(data) {
   const canvas = document.getElementById("chart-equip");
   document.getElementById("legend-equip").innerHTML = `
-    <span><i style="background:#1a5f75"></i>Equipment</span>
-    <span><i style="background:#8fa3b5"></i>Total defence</span>
+    <span><i style="background:#1a5f75" aria-hidden="true"></i>Equipment</span>
+    <span><i style="background:#6e8294" aria-hidden="true"></i>Total defence</span>
   `;
 
   const years = ["2021", "2022", "2023", "2024"];
@@ -508,7 +509,7 @@ function drawEquipChart(data) {
     });
 
     const series = [
-      { vals: totalIdx, color: "#8fa3b5", width: 2 },
+      { vals: totalIdx, color: "#6e8294", width: 2 },
       { vals: eqIdx, color: "#1a5f75", width: 2.4 },
     ];
 
@@ -568,8 +569,11 @@ function renderBarList(root, rows, { valueFmt, max, toggleId, selectable, scroll
         const selected = selectable && r.iso === selectedIso ? "is-selected" : "";
         const front = FRONTLINE.has(r.iso) ? "is-front" : "";
         const guide = r.guide ? "is-guide" : "";
-        return `
-      <button type="button" class="gdp-row ${front} ${guide} ${selected}" data-iso="${r.iso}" role="listitem">
+        const pressed = selectable
+        ? ` aria-pressed="${r.iso === selectedIso ? "true" : "false"}"`
+        : "";
+      return `
+      <button type="button" class="gdp-row ${front} ${guide} ${selected}" data-iso="${r.iso}" role="listitem"${pressed}>
         <span class="gdp-name" title="${r.name}">${r.name}</span>
         <div class="gdp-track"><div class="gdp-fill" data-width="${(r.value / max) * 100}"></div></div>
         <span class="gdp-val">${valueFmt(r.value)}</span>
@@ -642,10 +646,10 @@ function setupCountryPanel(countries) {
   select.value = selectedIso;
 
   document.getElementById("legend-mix").innerHTML = `
-    <span><i style="background:${MIX_COLORS.equipment}"></i>Equipment</span>
-    <span><i style="background:${MIX_COLORS.personnel}"></i>Personnel</span>
-    <span><i style="background:${MIX_COLORS.infrastructure}"></i>Infrastructure</span>
-    <span><i style="background:${MIX_COLORS.other}"></i>Other</span>
+    <span><i style="background:${MIX_COLORS.equipment}" aria-hidden="true"></i>Equipment</span>
+    <span><i style="background:${MIX_COLORS.personnel}" aria-hidden="true"></i>Personnel</span>
+    <span><i style="background:${MIX_COLORS.infrastructure}" aria-hidden="true"></i>Infrastructure</span>
+    <span><i style="background:${MIX_COLORS.other}" aria-hidden="true"></i>Other</span>
   `;
 
   const paintMix = (progress) => {
@@ -903,4 +907,5 @@ main().catch((err) => {
     lede.textContent =
       "Could not load data.json. Serve this folder over HTTP and reload.";
   }
+  document.querySelector(".intro-map")?.classList.add("is-fallback");
 });

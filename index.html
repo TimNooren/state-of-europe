@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <a class="skip-link" href="#top">Skip to content</a>
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="#top">State of Europe</a>
@@ -23,7 +24,7 @@
     </div>
   </header>
 
-  <main id="top">
+  <main id="top" tabindex="-1">
     <section class="intro">
       <div class="intro-copy">
         <h1>Defence buildup after 2022</h1>
@@ -224,7 +225,6 @@
     <p class="footer-copy">Public, provenance-tracked spending data for Europe’s post-2022 defence buildup.</p>
   </footer>
 
-  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
   <script src="app.js" type="module"></script>
 </body>
 </html>

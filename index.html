@@ -11,145 +11,171 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app">
-    <header class="top">
-      <div class="brand-block">
-        <p class="brand">State of Europe</p>
-        <p class="tagline">Defence buildup after 2022 · European NATO · 2021–2025</p>
-      </div>
-      <p class="top-meta">2024–2025 estimates <sup>e</sup> · NATO definition · accessed 2026-10-10</p>
-    </header>
-
-    <section class="kpis" aria-label="Headline figures">
-      <article class="kpi">
-        <p class="kpi-val" data-count="484" data-suffix="bn" data-prefix="$">$484bn</p>
-        <p class="kpi-label">European NATO spend, 2024<sup>e</sup></p>
-        <p class="kpi-note">+40% vs $346bn in 2021</p>
-      </article>
-      <article class="kpi">
-        <p class="kpi-val" data-count="17" data-suffix="" data-prefix="">17</p>
-        <p class="kpi-label">Allies ≥ 2% of GDP, 2024<sup>e</sup></p>
-        <p class="kpi-note">From 5 in 2021 · 28/28 in 2025<sup>e</sup></p>
-      </article>
-      <article class="kpi">
-        <p class="kpi-val" data-count="63" data-suffix="%" data-prefix="+">+63%</p>
-        <p class="kpi-label">Equipment outlays, 2021–2024</p>
-        <p class="kpi-note">$86bn → $141bn</p>
-      </article>
-      <article class="kpi">
-        <p class="kpi-val" data-count="4.48" data-suffix="%" data-prefix="" data-decimals="2">4.48%</p>
-        <p class="kpi-label">Poland GDP share, 2025<sup>e</sup></p>
-        <p class="kpi-note">Highest European Ally</p>
-      </article>
-    </section>
-
-    <div class="board">
-      <section class="panel panel-map" aria-label="GDP share map">
-        <div class="panel-head">
-          <h2>GDP share map · 2024<sup>e</sup></h2>
-          <p class="panel-unit">Darker = higher % of GDP</p>
-        </div>
-        <div class="map-wrap">
-          <canvas id="hero-map" width="720" height="520" role="img" aria-label="Europe map shaded by defence spending as share of GDP"></canvas>
-        </div>
-      </section>
-
-      <section class="panel" aria-labelledby="h-total">
-        <div class="panel-head">
-          <h2 id="h-total">Total defence expenditure</h2>
-          <p class="panel-unit">Billion current USD · 2025 ex-DE</p>
-        </div>
-        <canvas id="chart-total" width="480" height="200" role="img" aria-label="Total European NATO defence spending 2021 to 2025"></canvas>
-      </section>
-
-      <section class="panel" aria-labelledby="h-threshold">
-        <div class="panel-head">
-          <h2 id="h-threshold">Allies ≥ 2% of GDP</h2>
-          <p class="panel-unit">Count of European Allies</p>
-        </div>
-        <canvas id="chart-threshold" width="480" height="200" role="img" aria-label="Count of allies meeting 2 percent GDP guideline"></canvas>
-      </section>
-
-      <section class="panel panel-gdp" aria-labelledby="h-gdp">
-        <div class="panel-head">
-          <h2 id="h-gdp">GDP share by Ally · 2024<sup>e</sup></h2>
-          <p class="panel-unit">% of GDP · 2% guideline marked · eastern flank highlighted</p>
-        </div>
-        <div id="gdp-bars" class="gdp-bars" role="list"></div>
-      </section>
-
-      <section class="panel" aria-labelledby="h-equip">
-        <div class="panel-head">
-          <h2 id="h-equip">Equipment vs total</h2>
-          <p class="panel-unit">Indexed 2021 = 100</p>
-        </div>
-        <canvas id="chart-equip" width="480" height="180" role="img" aria-label="Indexed growth of equipment versus total spending"></canvas>
-        <div class="legend" id="legend-equip"></div>
-      </section>
-
-      <section class="panel" aria-labelledby="h-mix">
-        <div class="panel-head panel-head-row">
-          <div>
-            <h2 id="h-mix">Category mix</h2>
-            <p class="panel-unit">Share of defence expenditure</p>
-          </div>
-          <label class="select-wrap">
-            <span class="sr-only">Country</span>
-            <select id="mix-country"></select>
-          </label>
-        </div>
-        <canvas id="chart-mix" width="480" height="180" role="img" aria-label="Stacked category shares over time"></canvas>
-        <div class="legend" id="legend-mix"></div>
-      </section>
-
-      <section class="panel panel-de" aria-labelledby="h-de">
-        <div class="panel-head">
-          <h2 id="h-de">Germany · Zeitenwende</h2>
-          <p class="panel-unit">NATO ≠ Bundeshaushalt ≠ SIPRI — related, not interchangeable</p>
-        </div>
-        <div class="de-defs">
-          <p><strong>NATO</strong> 2.00% GDP 2024<sup>e</sup>; 2025 n/a at Alliance cut-off</p>
-          <p><strong>Bundeshaushalt</strong> EPL14 + Sondervermögen cash (national, narrower)</p>
-          <p><strong>SIPRI</strong> ~$114bn / ~2.3% GDP in 2025</p>
-        </div>
-        <div class="de-charts">
-          <div>
-            <p class="mini-label">NATO · EUR bn + % GDP</p>
-            <canvas id="chart-de-nato" width="360" height="150" role="img" aria-label="Germany NATO spending and GDP share"></canvas>
-          </div>
-          <div>
-            <p class="mini-label">National budget · EUR bn planned</p>
-            <canvas id="chart-de-budget" width="360" height="150" role="img" aria-label="Germany Einzelplan 14 and Sondervermögen"></canvas>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel panel-explorer" aria-labelledby="h-explorer">
-        <div class="panel-head panel-head-row">
-          <div>
-            <h2 id="h-explorer">Country explorer</h2>
-            <p class="panel-unit">Full 2021–2025 path · empty = not published</p>
-          </div>
-          <label class="select-wrap">
-            <span class="sr-only">Select country</span>
-            <select id="country-select"></select>
-          </label>
-        </div>
-        <div id="country-detail" class="explorer-detail"></div>
-      </section>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#top">State of Europe</a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#aggregate">Overview</a>
+        <a href="#countries">Countries</a>
+        <a href="#sources">Sources</a>
+      </nav>
     </div>
+  </header>
 
-    <footer class="foot">
-      <div class="foot-notes">
-        <p>European NATO = 29 Allies excl. US &amp; Canada. Absolute category amounts = total × share. DE 2025 NATO cells unavailable (budget not approved at 3 Jun 2025 cut-off).</p>
-        <p class="foot-links">
-          <a href="data/nato_defence_expenditure.csv">NATO CSV</a>
-          <a href="README.md">Schema</a>
+  <main id="top">
+    <section class="intro">
+      <div class="intro-copy">
+        <p class="eyebrow">European NATO · 2021–2025</p>
+        <h1>Defence buildup after 2022</h1>
+        <p class="lede">
+          Combined defence expenditure across European Allies rose from
+          <strong>$346&nbsp;bn in 2021</strong> to <strong>$484&nbsp;bn in 2024</strong><sup>e</sup>,
+          with more of the budget going to equipment. 2024–2025 figures are NATO estimates.
         </p>
       </div>
-      <ul class="source-list" id="source-list"></ul>
-    </footer>
-  </div>
+      <div class="intro-map" aria-hidden="true">
+        <canvas id="hero-map" width="900" height="560"></canvas>
+      </div>
+    </section>
+
+    <!-- AGGREGATE -->
+    <section class="block" id="aggregate" aria-labelledby="aggregate-title">
+      <div class="block-head">
+        <h2 id="aggregate-title">Alliance overview</h2>
+        <p>Headline totals and composition across European NATO.</p>
+      </div>
+
+      <div class="kpis" aria-label="Headline figures">
+        <article class="kpi">
+          <p class="kpi-val" data-count="484" data-suffix="bn" data-prefix="$">$484bn</p>
+          <p class="kpi-label">Defence spend, 2024<sup>e</sup></p>
+          <p class="kpi-note">+40% from $346 bn in 2021</p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-val" data-count="17" data-suffix="" data-prefix="">17</p>
+          <p class="kpi-label">Allies ≥ 2% of GDP, 2024<sup>e</sup></p>
+          <p class="kpi-note">From 5 in 2021 · 28/28 in 2025<sup>e</sup></p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-val" data-count="63" data-suffix="%" data-prefix="+">+63%</p>
+          <p class="kpi-label">Equipment outlays, 2021–2024</p>
+          <p class="kpi-note">$86 bn → $141 bn</p>
+        </article>
+        <article class="kpi">
+          <p class="kpi-val" data-count="4.48" data-suffix="%" data-prefix="" data-decimals="2">4.48%</p>
+          <p class="kpi-label">Poland GDP share, 2025<sup>e</sup></p>
+          <p class="kpi-note">Highest among European Allies</p>
+        </article>
+      </div>
+
+      <div class="chart-grid">
+        <article class="chart-card chart-wide">
+          <div class="chart-head">
+            <h3>Total defence expenditure</h3>
+            <p class="chart-unit">Billion current USD · 2025 excludes Germany (n/a)</p>
+          </div>
+          <canvas id="chart-total" width="1100" height="280" role="img" aria-label="Bar chart of total European NATO defence spending 2021 to 2025"></canvas>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-head">
+            <h3>Allies at or above 2% of GDP</h3>
+            <p class="chart-unit">Count of European Allies</p>
+          </div>
+          <canvas id="chart-threshold" width="520" height="260" role="img" aria-label="Count of allies meeting 2 percent GDP guideline"></canvas>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-head">
+            <h3>Equipment vs total spending</h3>
+            <p class="chart-unit">Indexed to 2021 = 100</p>
+          </div>
+          <canvas id="chart-equip" width="520" height="260" role="img" aria-label="Indexed growth of equipment versus total spending"></canvas>
+          <div class="legend" id="legend-equip"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- COUNTRIES -->
+    <section class="block block-alt" id="countries" aria-labelledby="countries-title">
+      <div class="block-head">
+        <h2 id="countries-title">Country breakdown</h2>
+        <p>Compare Allies on GDP share, then inspect any country’s full series.</p>
+      </div>
+
+      <div class="country-layout">
+        <article class="chart-card">
+          <div class="chart-head">
+            <h3>GDP share · 2024<sup>e</sup></h3>
+            <p class="chart-unit">% of GDP · line marks the 2% guideline · eastern flank in coral</p>
+          </div>
+          <div id="gdp-bars" class="gdp-bars" role="list"></div>
+        </article>
+
+        <div class="country-side">
+          <article class="chart-card">
+            <div class="chart-head chart-head-row">
+              <div>
+                <h3>Category mix</h3>
+                <p class="chart-unit">Share of defence expenditure</p>
+              </div>
+              <label class="select-wrap">
+                <span class="sr-only">Country for mix chart</span>
+                <select id="mix-country"></select>
+              </label>
+            </div>
+            <canvas id="chart-mix" width="520" height="280" role="img" aria-label="Stacked category shares over time"></canvas>
+            <div class="legend" id="legend-mix"></div>
+          </article>
+
+          <article class="chart-card explorer-card">
+            <div class="chart-head chart-head-row">
+              <div>
+                <h3>Inspect a country</h3>
+                <p class="chart-unit">2021–2025 path · empty cells = not published</p>
+              </div>
+              <label class="select-wrap">
+                <span class="sr-only">Select country</span>
+                <select id="country-select"></select>
+              </label>
+            </div>
+            <div id="country-detail" class="explorer-detail"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOURCES -->
+    <section class="block" id="sources" aria-labelledby="sources-title">
+      <div class="block-head">
+        <h2 id="sources-title">Sources &amp; notes</h2>
+        <p>Every figure is traceable to a public publisher. Do not mix NATO, national-budget, and SIPRI definitions without labeling.</p>
+      </div>
+
+      <div class="sources-grid">
+        <ul class="source-list" id="source-list"></ul>
+        <div class="methods">
+          <h3>Reading notes</h3>
+          <ul>
+            <li>European NATO = 29 Allies excluding the United States and Canada.</li>
+            <li>2024–2025 are NATO estimates (marked <sup>e</sup>).</li>
+            <li>Absolute category amounts = total × category share ÷ 100.</li>
+            <li>Germany 2025 NATO national-currency, USD, and GDP-share cells were unavailable at the 3 June 2025 cut-off.</li>
+            <li>Dataset accessed 10 October 2026.</li>
+          </ul>
+          <p class="methods-cta">
+            <a href="data/nato_defence_expenditure.csv">Download NATO CSV</a>
+            <a href="README.md">Schema &amp; definitions</a>
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p class="footer-brand">State of Europe</p>
+    <p class="footer-copy">Public, provenance-tracked spending data for Europe’s post-2022 defence buildup.</p>
+  </footer>
 
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
   <script src="app.js" type="module"></script>

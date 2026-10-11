@@ -19,7 +19,7 @@ Make Europe’s post-2022 defence buildup inspectable: spending first, then (lat
 | `data/nato_defence_expenditure.csv` | Main cross-country series (generated) |
 | `data/germany_*.csv` | Germany national / SIPRI overlays |
 | `scripts/generate_nato_expenditure.py` | Regenerates the NATO CSV from embedded tables |
-| `index.html` / `app.js` / `styles.css` / `data.json` | Static briefing site (GitHub Pages) |
+| `index.html` / `app.js` / `styles.css` / `data.json` | Dense single-viewport dashboard (GitHub Pages); DM Sans + IBM Plex Mono |
 | `README.md` | Minimal public blurb (keep static) |
 
 ## Hosting

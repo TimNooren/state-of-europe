@@ -1,14 +1,15 @@
 /**
- * State of Europe — interactive briefing
+ * State of Europe — dense dashboard
  */
 
 const FRONTLINE = new Set(["PL", "EE", "LV", "LT", "FI", "RO"]);
 const MIX_COLORS = {
-  equipment: "#1f5c72",
+  equipment: "#1a5f75",
   personnel: "#5a6f82",
-  infrastructure: "#9a7b4f",
+  infrastructure: "#8a6d42",
   other: "#a8b5c0",
 };
+const FONT = "DM Sans, Segoe UI, sans-serif";
 
 const ISO_NUMERIC = {
   8: "AL", 56: "BE", 100: "BG", 203: "CZ", 276: "DE", 208: "DK", 233: "EE",
@@ -26,8 +27,6 @@ async function main() {
     return r.json();
   });
 
-  setupHeader();
-  setupReveals();
   renderSources(data.sources);
   renderGdpBars(data.countries);
   setupMixChart(data.countries);
@@ -42,41 +41,11 @@ async function main() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* UI chrome                                                                  */
+/* Figures                                                                    */
 /* -------------------------------------------------------------------------- */
 
-function setupHeader() {
-  const header = document.querySelector(".site-header");
-  const onScroll = () => header.classList.toggle("is-scrolled", window.scrollY > 20);
-  onScroll();
-  window.addEventListener("scroll", onScroll, { passive: true });
-}
-
-function setupReveals() {
-  const nodes = document.querySelectorAll(
-    ".section-intro, .chart-block, .callout, .def, .figures-grid, .explorer, .sources-panel"
-  );
-  nodes.forEach((el) => el.classList.add("reveal"));
-  if (reduceMotion) {
-    nodes.forEach((el) => el.classList.add("is-visible"));
-    return;
-  }
-  const io = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((e) => {
-        if (e.isIntersecting) {
-          e.target.classList.add("is-visible");
-          io.unobserve(e.target);
-        }
-      });
-    },
-    { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
-  );
-  nodes.forEach((el) => io.observe(el));
-}
-
 function animateFigures() {
-  const figs = document.querySelectorAll(".figure-value[data-count]");
+  const figs = document.querySelectorAll(".kpi-val[data-count]");
   const run = (el) => {
     if (el.dataset.animated) return;
     el.dataset.animated = "1";
@@ -90,7 +59,7 @@ function animateFigures() {
     }
     el.textContent = formatCount(0, prefix, suffix, decimals);
     const start = performance.now();
-    const dur = 1400;
+    const dur = 900;
     const tick = (now) => {
       const t = Math.min(1, (now - start) / dur);
       const eased = 1 - Math.pow(1 - t, 3);
@@ -100,26 +69,7 @@ function animateFigures() {
     };
     requestAnimationFrame(tick);
   };
-
-  const io = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((e) => {
-        if (e.isIntersecting) {
-          run(e.target);
-          io.unobserve(e.target);
-        }
-      });
-    },
-    { threshold: 0.35 }
-  );
-  figs.forEach((el) => io.observe(el));
-  // Headless / instant-load fallback
-  requestAnimationFrame(() => {
-    figs.forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      if (rect.top < window.innerHeight && rect.bottom > 0) run(el);
-    });
-  });
+  figs.forEach(run);
 }
 
 function formatCount(val, prefix, suffix, decimals) {
@@ -131,14 +81,13 @@ function formatCount(val, prefix, suffix, decimals) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Hero map                                                                   */
+/* Map                                                                        */
 /* -------------------------------------------------------------------------- */
 
 async function drawHeroMap(countries) {
   const canvas = document.getElementById("hero-map");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-
   const byIso = Object.fromEntries(countries.map((c) => [c.iso2, c]));
   const gdp = {};
   for (const c of countries) {
@@ -161,7 +110,6 @@ async function drawHeroMap(countries) {
   ]);
 
   const land = feature(world, world.objects.countries);
-  // Allies + neighbors for geographic context (ISO 3166-1 numeric)
   const neighborIds = new Set([40, 112, 756, 372, 804, 498, 688, 70, 51, 352, 20, 196, 470, 674, 643]);
   const collection = {
     type: "FeatureCollection",
@@ -171,24 +119,32 @@ async function drawHeroMap(countries) {
     }),
   };
 
-  const width = canvas.width;
-  const height = canvas.height;
-  const projection = d3.geoMercator().center([15, 54]).scale(width * 0.72).translate([width * 0.58, height * 0.48]);
-  const path = d3.geoPath(projection, ctx);
+  const paintAtSize = (progress = 1) => {
+    const wrap = canvas.parentElement;
+    const cssW = wrap?.clientWidth || 720;
+    const cssH = wrap?.clientHeight || 520;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  const maxGdp = 4.0;
-  const color = (iso) => {
-    const v = gdp[iso];
-    if (v == null) return "#2c4a5c";
-    const t = Math.min(1, Math.max(0, (v - 1.15) / (maxGdp - 1.15)));
-    // Stronger Atlantic scale so the choropleth reads at hero scale
-    if (t < 0.5) return lerpColor("#16384a", "#4f8fa8", t * 2);
-    return lerpColor("#4f8fa8", "#e8f2f6", (t - 0.5) * 2);
-  };
+    const width = cssW;
+    const height = cssH;
+    const projection = d3.geoMercator().center([15, 54]).scale(width * 0.85).translate([width * 0.52, height * 0.5]);
+    const path = d3.geoPath(projection, ctx);
 
-  function paint(progress = 1) {
+    const maxGdp = 4.0;
+    const color = (iso) => {
+      const v = gdp[iso];
+      if (v == null) return "#2c4a5c";
+      const t = Math.min(1, Math.max(0, (v - 1.15) / (maxGdp - 1.15)));
+      if (t < 0.5) return lerpColor("#16384a", "#4f8fa8", t * 2);
+      return lerpColor("#4f8fa8", "#e8f2f6", (t - 0.5) * 2);
+    };
+
     ctx.clearRect(0, 0, width, height);
-    // deep field
     const g = ctx.createLinearGradient(0, 0, width, height);
     g.addColorStop(0, "#0a1520");
     g.addColorStop(0.55, "#102233");
@@ -196,25 +152,6 @@ async function drawHeroMap(countries) {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, width, height);
 
-    // subtle grid
-    ctx.save();
-    ctx.strokeStyle = "rgba(143, 163, 181, 0.06)";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 48) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < height; y += 48) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // draw countries — neighbors first, allies on top
     const allies = [];
     const others = [];
     for (const f of collection.features) {
@@ -228,7 +165,7 @@ async function drawHeroMap(countries) {
       ctx.fillStyle = "rgba(28, 44, 58, 0.72)";
       ctx.fill();
       ctx.strokeStyle = "rgba(8, 16, 26, 0.4)";
-      ctx.lineWidth = 0.7;
+      ctx.lineWidth = 0.6;
       ctx.stroke();
     }
     for (const [f, iso] of allies) {
@@ -239,83 +176,80 @@ async function drawHeroMap(countries) {
       ctx.fill();
       ctx.globalAlpha = 1;
       ctx.strokeStyle = "rgba(8, 16, 26, 0.65)";
-      ctx.lineWidth = 1.15;
+      ctx.lineWidth = 0.9;
       ctx.stroke();
     }
 
-    // glow dots on frontline capitals (approx)
     const capitals = {
-      PL: [21.01, 52.23],
-      EE: [24.75, 59.44],
-      LV: [24.11, 56.95],
-      LT: [25.28, 54.69],
-      FI: [24.94, 60.17],
-      DE: [13.4, 52.52],
-      FR: [2.35, 48.86],
-      GB: [-0.13, 51.51],
+      PL: [21.01, 52.23], EE: [24.75, 59.44], LV: [24.11, 56.95],
+      LT: [25.28, 54.69], FI: [24.94, 60.17], DE: [13.4, 52.52],
+      FR: [2.35, 48.86], GB: [-0.13, 51.51],
     };
-    ctx.save();
     for (const [iso, ll] of Object.entries(capitals)) {
       const [x, y] = projection(ll);
-      const r = FRONTLINE.has(iso) ? 3.2 : 2.2;
+      const r = FRONTLINE.has(iso) ? 2.8 : 2;
       ctx.beginPath();
       ctx.fillStyle = FRONTLINE.has(iso) ? "rgba(196, 140, 110, 0.95)" : "rgba(196, 215, 224, 0.85)";
       ctx.arc(x, y, r * progress, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.restore();
-  }
+  };
 
-  if (reduceMotion) {
-    paint(1);
-  } else {
+  if (reduceMotion) paintAtSize(1);
+  else {
     const start = performance.now();
-    const dur = 1600;
+    const dur = 1100;
     const step = (now) => {
       const t = Math.min(1, (now - start) / dur);
-      paint(1 - Math.pow(1 - t, 3));
+      paintAtSize(1 - Math.pow(1 - t, 3));
       if (t < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   }
   canvas.classList.add("is-ready");
+  window.addEventListener("resize", () => paintAtSize(1));
 }
 
 function paintFallbackHero(ctx, canvas) {
-  const { width, height } = canvas;
-  const g = ctx.createLinearGradient(0, 0, width, height);
+  const wrap = canvas.parentElement;
+  const w = wrap?.clientWidth || 720;
+  const h = wrap?.clientHeight || 520;
+  canvas.width = w;
+  canvas.height = h;
+  const g = ctx.createLinearGradient(0, 0, w, h);
   g.addColorStop(0, "#0a1520");
   g.addColorStop(1, "#1a3344");
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, w, h);
 }
 
 function lerpColor(a, b, t) {
   const pa = hexToRgb(a);
   const pb = hexToRgb(b);
-  const r = Math.round(pa.r + (pb.r - pa.r) * t);
-  const g = Math.round(pa.g + (pb.g - pa.g) * t);
-  const bl = Math.round(pa.b + (pb.b - pa.b) * t);
-  return `rgb(${r},${g},${bl})`;
+  return `rgb(${Math.round(pa.r + (pb.r - pa.r) * t)},${Math.round(pa.g + (pb.g - pa.g) * t)},${Math.round(pa.b + (pb.b - pa.b) * t)})`;
 }
 
 function hexToRgb(hex) {
   const h = hex.replace("#", "");
-  return {
-    r: parseInt(h.slice(0, 2), 16),
-    g: parseInt(h.slice(2, 4), 16),
-    b: parseInt(h.slice(4, 6), 16),
-  };
+  return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
 }
 
 /* -------------------------------------------------------------------------- */
-/* Canvas chart helpers                                                       */
+/* Chart helpers                                                              */
 /* -------------------------------------------------------------------------- */
 
 function chartSurface(canvas) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const cssW = canvas.clientWidth || canvas.width;
-  const cssH = (canvas.height / canvas.width) * cssW;
+  const parent = canvas.parentElement;
+  const cssW = canvas.clientWidth || parent?.clientWidth || canvas.width;
+  const attrRatio = canvas.height / canvas.width;
+  let cssH = cssW * attrRatio;
+  // Prefer filling available flex space when parent has height
+  if (parent && parent.clientHeight > 40 && canvas.previousElementSibling == null) {
+    // leave for panels where canvas is sole flexible child — use attr ratio
+  }
+  const flexH = getFlexCanvasHeight(canvas);
+  if (flexH) cssH = flexH;
   canvas.style.height = `${cssH}px`;
   canvas.width = Math.round(cssW * dpr);
   canvas.height = Math.round(cssH * dpr);
@@ -324,24 +258,48 @@ function chartSurface(canvas) {
   return { ctx, w: cssW, h: cssH };
 }
 
+function getFlexCanvasHeight(canvas) {
+  const panel = canvas.closest(".panel");
+  if (!panel) return null;
+  const head = panel.querySelector(".panel-head");
+  const legend = panel.querySelector(".legend");
+  const mini = canvas.previousElementSibling?.classList?.contains("mini-label")
+    ? canvas.previousElementSibling
+    : null;
+  const used =
+    (head?.offsetHeight || 0) +
+    (legend?.offsetHeight || 0) +
+    (mini?.offsetHeight || 0) +
+    12;
+  // Germany dual charts & mix/equip share panel height differently
+  if (canvas.id.startsWith("chart-de-")) {
+    const wrap = canvas.parentElement;
+    const avail = wrap.clientHeight - (mini?.offsetHeight || 0) - 4;
+    return avail > 60 ? avail : null;
+  }
+  const avail = panel.clientHeight - used;
+  if (avail > 70 && (canvas.id === "chart-total" || canvas.id === "chart-threshold" || canvas.id === "chart-equip" || canvas.id === "chart-mix")) {
+    return avail;
+  }
+  return null;
+}
+
 function drawAxes(ctx, plot, { yMin, yMax, yTicks, xLabels }) {
   const { x, y, w, h } = plot;
-  ctx.strokeStyle = "#c9d3dc";
-  ctx.fillStyle = "#5a6f82";
   ctx.lineWidth = 1;
-  ctx.font = "12px Outfit, sans-serif";
+  ctx.font = `10px ${FONT}`;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
 
   for (const tick of yTicks) {
     const yy = y + h - ((tick - yMin) / (yMax - yMin)) * h;
-    ctx.strokeStyle = "rgba(201, 211, 220, 0.7)";
+    ctx.strokeStyle = "rgba(208, 216, 224, 0.85)";
     ctx.beginPath();
     ctx.moveTo(x, yy);
     ctx.lineTo(x + w, yy);
     ctx.stroke();
     ctx.fillStyle = "#5a6f82";
-    ctx.fillText(formatAxis(tick), x - 8, yy);
+    ctx.fillText(formatAxis(tick), x - 6, yy);
   }
 
   ctx.textAlign = "center";
@@ -349,7 +307,7 @@ function drawAxes(ctx, plot, { yMin, yMax, yTicks, xLabels }) {
   const n = xLabels.length;
   xLabels.forEach((label, i) => {
     const xx = x + ((i + 0.5) / n) * w;
-    ctx.fillText(label, xx, y + h + 10);
+    ctx.fillText(label, xx, y + h + 6);
   });
 }
 
@@ -370,7 +328,7 @@ function observeDraw(canvas, drawFn) {
     if (!animate || reduceMotion) drawFn(1);
     else {
       const start = performance.now();
-      const dur = 1100;
+      const dur = 850;
       const step = (now) => {
         const t = Math.min(1, (now - start) / dur);
         drawFn(1 - Math.pow(1 - t, 3));
@@ -386,11 +344,10 @@ function observeDraw(canvas, drawFn) {
         io.disconnect();
       }
     },
-    { threshold: 0.2 }
+    { threshold: 0.15 }
   );
   io.observe(canvas);
-  // Ensure charts paint even if IntersectionObserver never fires
-  setTimeout(() => run(false), 1800);
+  setTimeout(() => run(false), 1200);
   window.addEventListener("resize", () => {
     if (drawn) drawFn(1);
   });
@@ -408,17 +365,16 @@ function drawTotalChart(data) {
   observeDraw(canvas, (progress) => {
     const { ctx, w, h } = chartSurface(canvas);
     ctx.clearRect(0, 0, w, h);
-    const plot = { x: 52, y: 18, w: w - 72, h: h - 58 };
+    const plot = { x: 36, y: 14, w: w - 48, h: h - 36 };
     const yMax = 520;
     drawAxes(ctx, plot, {
-      yMin: 0,
-      yMax,
-      yTicks: [0, 100, 200, 300, 400, 500],
+      yMin: 0, yMax,
+      yTicks: [0, 200, 400],
       xLabels: years.map((y, i) => (i >= 3 ? `${y}e` : y)),
     });
 
     const n = years.length;
-    const gap = 18;
+    const gap = 10;
     const barW = (plot.w - gap * (n + 1)) / n;
 
     values.forEach((v, i) => {
@@ -427,22 +383,22 @@ function drawTotalChart(data) {
       const y = plot.y + plot.h - bh;
       const incomplete = years[i] === "2025";
       const grad = ctx.createLinearGradient(0, y, 0, plot.y + plot.h);
-      grad.addColorStop(0, incomplete ? "#7a8f9c" : "#1f5c72");
-      grad.addColorStop(1, incomplete ? "#5a6f82" : "#134355");
+      grad.addColorStop(0, incomplete ? "#7a8f9c" : "#1a5f75");
+      grad.addColorStop(1, incomplete ? "#5a6f82" : "#0f4456");
       ctx.fillStyle = grad;
       ctx.fillRect(x, y, barW, bh);
 
-      ctx.fillStyle = "#0b1522";
-      ctx.font = "600 13px Outfit, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
       if (progress > 0.85) {
-        ctx.fillText(`$${Math.round(v)}`, x + barW / 2, y - 6);
-      }
-      if (incomplete && progress > 0.85) {
-        ctx.fillStyle = "#5a6f82";
-        ctx.font = "11px Outfit, sans-serif";
-        ctx.fillText("ex-DE", x + barW / 2, y - 22);
+        ctx.fillStyle = "#0e1824";
+        ctx.font = `600 10px ${FONT}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(`$${Math.round(v)}`, x + barW / 2, y - 3);
+        if (incomplete) {
+          ctx.fillStyle = "#5a6f82";
+          ctx.font = `9px ${FONT}`;
+          ctx.fillText("ex-DE", x + barW / 2, y - 14);
+        }
       }
     });
   });
@@ -456,16 +412,14 @@ function drawThresholdChart(data) {
   observeDraw(canvas, (progress) => {
     const { ctx, w, h } = chartSurface(canvas);
     ctx.clearRect(0, 0, w, h);
-    const plot = { x: 40, y: 20, w: w - 56, h: h - 56 };
+    const plot = { x: 28, y: 14, w: w - 40, h: h - 36 };
     const yMax = 30;
     drawAxes(ctx, plot, {
-      yMin: 0,
-      yMax,
-      yTicks: [0, 5, 10, 15, 20, 25, 30],
+      yMin: 0, yMax,
+      yTicks: [0, 10, 20, 30],
       xLabels: years.map((y, i) => (i >= 3 ? `${y}e` : y)),
     });
 
-    // area + line
     ctx.beginPath();
     counts.forEach((c, i) => {
       const x = plot.x + ((i + 0.5) / counts.length) * plot.w;
@@ -473,17 +427,16 @@ function drawThresholdChart(data) {
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
-    ctx.strokeStyle = "#2f6f4e";
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#2a6b4a";
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // fill
     ctx.lineTo(plot.x + ((counts.length - 0.5) / counts.length) * plot.w, plot.y + plot.h);
     ctx.lineTo(plot.x + (0.5 / counts.length) * plot.w, plot.y + plot.h);
     ctx.closePath();
     const g = ctx.createLinearGradient(0, plot.y, 0, plot.y + plot.h);
-    g.addColorStop(0, "rgba(47, 111, 78, 0.28)");
-    g.addColorStop(1, "rgba(47, 111, 78, 0.02)");
+    g.addColorStop(0, "rgba(42, 107, 74, 0.28)");
+    g.addColorStop(1, "rgba(42, 107, 74, 0.02)");
     ctx.fillStyle = g;
     ctx.fill();
 
@@ -491,23 +444,24 @@ function drawThresholdChart(data) {
       const x = plot.x + ((i + 0.5) / counts.length) * plot.w;
       const y = plot.y + plot.h - ((c * progress) / yMax) * plot.h;
       ctx.beginPath();
-      ctx.fillStyle = "#2f6f4e";
-      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#2a6b4a";
+      ctx.arc(x, y, 3.2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#0b1522";
-      ctx.font = "600 13px Outfit, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      if (progress > 0.8) ctx.fillText(String(Math.round(c * progress)), x, y - 8);
+      if (progress > 0.8) {
+        ctx.fillStyle = "#0e1824";
+        ctx.font = `600 10px ${FONT}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(String(Math.round(c * progress)), x, y - 5);
+      }
     });
   });
 }
 
 function drawEquipChart(data) {
   const canvas = document.getElementById("chart-equip");
-  const legend = document.getElementById("legend-equip");
-  legend.innerHTML = `
-    <span><i style="background:#1f5c72"></i>Equipment</span>
+  document.getElementById("legend-equip").innerHTML = `
+    <span><i style="background:#1a5f75"></i>Equipment</span>
     <span><i style="background:#8fa3b5"></i>Total defence</span>
   `;
 
@@ -520,19 +474,18 @@ function drawEquipChart(data) {
   observeDraw(canvas, (progress) => {
     const { ctx, w, h } = chartSurface(canvas);
     ctx.clearRect(0, 0, w, h);
-    const plot = { x: 44, y: 18, w: w - 60, h: h - 54 };
+    const plot = { x: 32, y: 10, w: w - 44, h: h - 32 };
     const yMin = 90;
     const yMax = 170;
     drawAxes(ctx, plot, {
-      yMin,
-      yMax,
-      yTicks: [100, 120, 140, 160],
+      yMin, yMax,
+      yTicks: [100, 130, 160],
       xLabels: years,
     });
 
     const series = [
-      { vals: totalIdx, color: "#8fa3b5", width: 2 },
-      { vals: eqIdx, color: "#1f5c72", width: 2.75 },
+      { vals: totalIdx, color: "#8fa3b5", width: 1.75 },
+      { vals: eqIdx, color: "#1a5f75", width: 2.25 },
     ];
 
     for (const s of series) {
@@ -553,14 +506,13 @@ function drawEquipChart(data) {
         const y = plot.y + plot.h - ((vv - yMin) / (yMax - yMin)) * plot.h;
         ctx.beginPath();
         ctx.fillStyle = s.color;
-        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.arc(x, y, 2.8, 0, Math.PI * 2);
         ctx.fill();
       });
     }
 
-    // baseline 100
     const y100 = plot.y + plot.h - ((100 - yMin) / (yMax - yMin)) * plot.h;
-    ctx.setLineDash([4, 4]);
+    ctx.setLineDash([3, 3]);
     ctx.strokeStyle = "rgba(90, 111, 130, 0.55)";
     ctx.beginPath();
     ctx.moveTo(plot.x, y100);
@@ -580,7 +532,7 @@ function setupMixChart(countries) {
   document.getElementById("legend-mix").innerHTML = `
     <span><i style="background:${MIX_COLORS.equipment}"></i>Equipment</span>
     <span><i style="background:${MIX_COLORS.personnel}"></i>Personnel</span>
-    <span><i style="background:${MIX_COLORS.infrastructure}"></i>Infrastructure</span>
+    <span><i style="background:${MIX_COLORS.infrastructure}"></i>Infra</span>
     <span><i style="background:${MIX_COLORS.other}"></i>Other</span>
   `;
 
@@ -610,16 +562,15 @@ function drawMixChart(canvas, country, progress) {
 
   const { ctx, w, h } = chartSurface(canvas);
   ctx.clearRect(0, 0, w, h);
-  const plot = { x: 44, y: 16, w: w - 60, h: h - 52 };
+  const plot = { x: 32, y: 8, w: w - 44, h: h - 30 };
   drawAxes(ctx, plot, {
-    yMin: 0,
-    yMax: 100,
-    yTicks: [0, 25, 50, 75, 100],
+    yMin: 0, yMax: 100,
+    yTicks: [0, 50, 100],
     xLabels: years.map((y) => (Number(y) >= 2024 ? `${y}e` : y)),
   });
 
   const n = years.length;
-  const gap = 14;
+  const gap = 8;
   const barW = (plot.w - gap * (n + 1)) / n;
 
   years.forEach((year, i) => {
@@ -647,69 +598,59 @@ function drawGermanyNato(data) {
   observeDraw(canvas, (progress) => {
     const { ctx, w, h } = chartSurface(canvas);
     ctx.clearRect(0, 0, w, h);
-    const plot = { x: 48, y: 20, w: w - 88, h: h - 56 };
+    const plot = { x: 32, y: 16, w: w - 64, h: h - 36 };
     const yMax = 100;
     drawAxes(ctx, plot, {
-      yMin: 0,
-      yMax,
-      yTicks: [0, 25, 50, 75, 100],
+      yMin: 0, yMax,
+      yTicks: [0, 50, 100],
       xLabels: years.map((y) => (y === "2024" ? "2024e" : y)),
     });
 
-    // bars EUR
     const n = years.length;
-    const gap = 22;
-    const barW = (plot.w - gap * (n + 1)) / n * 0.62;
+    const gap = 14;
+    const slot = (plot.w - gap * (n + 1)) / n;
+    const barW = slot * 0.58;
     eur.forEach((v, i) => {
       const bh = (v / yMax) * plot.h * progress;
-      const x = plot.x + gap + i * ((plot.w - gap * (n + 1)) / n + gap);
-      const y = plot.y + plot.h - bh;
-      ctx.fillStyle = "#1f5c72";
-      ctx.fillRect(x, y, barW, bh);
+      const x = plot.x + gap + i * (slot + gap);
+      ctx.fillStyle = "#1a5f75";
+      ctx.fillRect(x, plot.y + plot.h - bh, barW, bh);
     });
 
-    // GDP line on right axis 0-2.5
     const gMin = 0;
     const gMax = 2.5;
     ctx.beginPath();
     gdp.forEach((v, i) => {
-      const slot = (plot.w - gap * (n + 1)) / n;
       const x = plot.x + gap + i * (slot + gap) + barW * 0.5;
-      const vv = v * progress;
-      const y = plot.y + plot.h - ((vv - gMin) / (gMax - gMin)) * plot.h;
+      const y = plot.y + plot.h - ((v * progress - gMin) / (gMax - gMin)) * plot.h;
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
-    ctx.strokeStyle = "#9a7b4f";
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#8a6d42";
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     gdp.forEach((v, i) => {
-      const slot = (plot.w - gap * (n + 1)) / n;
       const x = plot.x + gap + i * (slot + gap) + barW * 0.5;
-      const vv = v * progress;
-      const y = plot.y + plot.h - ((vv - gMin) / (gMax - gMin)) * plot.h;
+      const y = plot.y + plot.h - ((v * progress - gMin) / (gMax - gMin)) * plot.h;
       ctx.beginPath();
-      ctx.fillStyle = "#9a7b4f";
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = "#8a6d42";
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fill();
     });
 
-    // right axis labels
-    ctx.fillStyle = "#9a7b4f";
-    ctx.font = "11px Outfit, sans-serif";
+    ctx.fillStyle = "#8a6d42";
+    ctx.font = `9px ${FONT}`;
     ctx.textAlign = "left";
     [0, 1, 2].forEach((tick) => {
       const y = plot.y + plot.h - ((tick - gMin) / (gMax - gMin)) * plot.h;
-      ctx.fillText(`${tick}%`, plot.x + plot.w + 8, y);
+      ctx.fillText(`${tick}%`, plot.x + plot.w + 5, y);
     });
 
     ctx.fillStyle = "#5a6f82";
-    ctx.font = "11px Outfit, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("EUR bn (bars)", plot.x, 8);
-    ctx.fillStyle = "#9a7b4f";
-    ctx.fillText("% GDP (line)", plot.x + 100, 8);
+    ctx.fillText("EUR bn", plot.x, 8);
+    ctx.fillStyle = "#8a6d42";
+    ctx.fillText("% GDP", plot.x + 52, 8);
   });
 }
 
@@ -726,17 +667,16 @@ function drawGermanyBudget(germany) {
   observeDraw(canvas, (progress) => {
     const { ctx, w, h } = chartSurface(canvas);
     ctx.clearRect(0, 0, w, h);
-    const plot = { x: 48, y: 28, w: w - 64, h: h - 64 };
+    const plot = { x: 32, y: 16, w: w - 44, h: h - 36 };
     const yMax = 90;
     drawAxes(ctx, plot, {
-      yMin: 0,
-      yMax,
-      yTicks: [0, 20, 40, 60, 80],
+      yMin: 0, yMax,
+      yTicks: [0, 40, 80],
       xLabels: years.map(String),
     });
 
     const n = years.length;
-    const gap = 20;
+    const gap = 12;
     const barW = (plot.w - gap * (n + 1)) / n;
 
     years.forEach((year, i) => {
@@ -745,17 +685,17 @@ function drawGermanyBudget(germany) {
       const x = plot.x + gap + i * (barW + gap);
       const h1 = (a / yMax) * plot.h;
       const h2 = (b / yMax) * plot.h;
-      ctx.fillStyle = "#1f5c72";
+      ctx.fillStyle = "#1a5f75";
       ctx.fillRect(x, plot.y + plot.h - h1 - h2, barW, h1);
-      ctx.fillStyle = "#9a7b4f";
+      ctx.fillStyle = "#8a6d42";
       ctx.fillRect(x, plot.y + plot.h - h2, barW, h2);
     });
 
-    ctx.font = "11px Outfit, sans-serif";
-    ctx.fillStyle = "#1f5c72";
-    ctx.fillText("Einzelplan 14", plot.x, 10);
-    ctx.fillStyle = "#9a7b4f";
-    ctx.fillText("Sondervermögen cash", plot.x + 100, 10);
+    ctx.font = `9px ${FONT}`;
+    ctx.fillStyle = "#1a5f75";
+    ctx.fillText("EPL14", plot.x, 8);
+    ctx.fillStyle = "#8a6d42";
+    ctx.fillText("Sondervermögen", plot.x + 42, 8);
   });
 }
 
@@ -788,17 +728,7 @@ function renderGdpBars(countries) {
 
   const fills = root.querySelectorAll(".gdp-fill");
   const expand = () => fills.forEach((el) => { el.style.width = `${el.dataset.width}%`; });
-  const io = new IntersectionObserver(
-    (entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        expand();
-        io.disconnect();
-      }
-    },
-    { threshold: 0.2 }
-  );
-  io.observe(root);
-  setTimeout(expand, 1600);
+  requestAnimationFrame(() => setTimeout(expand, 80));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -806,32 +736,25 @@ function renderGdpBars(countries) {
 /* -------------------------------------------------------------------------- */
 
 function setupExplorer(countries) {
-  const list = document.getElementById("country-list");
+  const select = document.getElementById("country-select");
   const detail = document.getElementById("country-detail");
   const sorted = [...countries].sort((a, b) => a.name.localeCompare(b.name));
 
-  list.innerHTML = sorted
-    .map((c) => `<button type="button" data-iso="${c.iso2}" aria-selected="false">${c.name}</button>`)
-    .join("");
+  select.innerHTML = sorted.map((c) => `<option value="${c.iso2}">${c.name}</option>`).join("");
+  select.value = "PL";
 
   const show = (iso) => {
-    list.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", b.dataset.iso === iso ? "true" : "false"));
     const c = countries.find((x) => x.iso2 === iso);
     detail.innerHTML = renderCountryDetail(c);
   };
 
-  list.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-iso]");
-    if (btn) show(btn.dataset.iso);
-  });
-
+  select.addEventListener("change", () => show(select.value));
   show("PL");
 }
 
 function renderCountryDetail(c) {
   const y24 = c.years["2024"] || {};
   const y21 = c.years["2021"] || {};
-  const y25 = c.years["2025"] || {};
   const gdp24 = y24.defence_expenditure_share_of_gdp;
   const usd24 = y24.defence_expenditure_current_usd;
   const eq24 = y24.equipment_share_of_defence_expenditure;
@@ -839,7 +762,13 @@ function renderCountryDetail(c) {
   const delta = gdp24 != null && gdp21 != null ? gdp24 - gdp21 : null;
 
   const years = ["2021", "2022", "2023", "2024", "2025"];
-  const fmt = (v, digits = 2) => (v == null ? "—" : Number(v).toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits === 0 ? 0 : Math.min(2, digits) }));
+  const fmt = (v, digits = 2) =>
+    v == null
+      ? "—"
+      : Number(v).toLocaleString("en-US", {
+          maximumFractionDigits: digits,
+          minimumFractionDigits: digits === 0 ? 0 : Math.min(2, digits),
+        });
   const cell = (v, digits) => (v == null ? `<td class="na">—</td>` : `<td>${fmt(v, digits)}</td>`);
 
   return `
@@ -849,7 +778,6 @@ function renderCountryDetail(c) {
         <span class="tag">${c.iso2}</span>
         ${c.eu_member ? `<span class="tag">EU</span>` : ""}
         ${c.nordic ? `<span class="tag">Nordic</span>` : ""}
-        <span class="tag">European NATO</span>
       </div>
     </div>
     <dl class="detail-stats">
@@ -864,9 +792,9 @@ function renderCountryDetail(c) {
         <small>Current USD</small>
       </div>
       <div class="detail-stat">
-        <dt>Equipment share</dt>
+        <dt>Equipment</dt>
         <dd>${eq24 != null ? eq24.toFixed(1) + "%" : "—"}</dd>
-        <small>2024e · NATO category</small>
+        <small>Share 2024e</small>
       </div>
     </dl>
     <div class="detail-table-wrap">
@@ -883,11 +811,11 @@ function renderCountryDetail(c) {
             ${years.map((y) => cell(c.years[y]?.defence_expenditure_share_of_gdp, 2)).join("")}
           </tr>
           <tr>
-            <td>USD million</td>
+            <td>USD m</td>
             ${years.map((y) => cell(c.years[y]?.defence_expenditure_current_usd, 0)).join("")}
           </tr>
           <tr>
-            <td>Equipment %</td>
+            <td>Equip %</td>
             ${years.map((y) => cell(c.years[y]?.equipment_share_of_defence_expenditure, 1)).join("")}
           </tr>
           <tr>
@@ -895,14 +823,13 @@ function renderCountryDetail(c) {
             ${years.map((y) => cell(c.years[y]?.personnel_share_of_defence_expenditure, 1)).join("")}
           </tr>
           <tr>
-            <td>Infrastructure %</td>
+            <td>Infra %</td>
             ${years.map((y) => cell(c.years[y]?.infrastructure_share_of_defence_expenditure, 1)).join("")}
           </tr>
           <tr>
             <td>Other %</td>
             ${years.map((y) => cell(c.years[y]?.other_share_of_defence_expenditure, 1)).join("")}
           </tr>
-          ${y25.defence_expenditure_share_of_gdp != null ? "" : ""}
         </tbody>
       </table>
     </div>
@@ -920,7 +847,7 @@ function renderSources(sources) {
       (s) => `
       <li>
         <a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.short_name}</a>
-        <span class="source-meta">${s.publisher} · ${s.source_id}</span>
+        <span class="source-meta">${s.source_id}</span>
       </li>`
     )
     .join("");
@@ -928,9 +855,9 @@ function renderSources(sources) {
 
 main().catch((err) => {
   console.error(err);
-  const hero = document.querySelector(".hero-lede");
-  if (hero) {
-    hero.textContent =
-      "Could not load data.json. Serve this folder over HTTP (e.g. python3 -m http.server) and reload.";
+  const tag = document.querySelector(".tagline");
+  if (tag) {
+    tag.textContent =
+      "Could not load data.json — serve this folder over HTTP and reload.";
   }
 });

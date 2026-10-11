@@ -1,0 +1,7 @@
+country_iso2,year,metric,value,unit,currency,value_status,source_id,source_url,accessed_on,notes
+DE,2021,military_expenditure,56.51,billion,USD,final,SIPRI-MILEX-MACRO,https://www.macrotrends.net/global-metrics/countries/deu/germany/military-spending-defense-budget,2026-10-10,SIPRI current-USD series via Macrotrends mirror; replace with SIPRI primary download when updating
+DE,2022,military_expenditure,56.15,billion,USD,final,SIPRI-MILEX-MACRO,https://www.macrotrends.net/global-metrics/countries/deu/germany/military-spending-defense-budget,2026-10-10,
+DE,2023,military_expenditure,67.29,billion,USD,final,SIPRI-MILEX-MACRO,https://www.macrotrends.net/global-metrics/countries/deu/germany/military-spending-defense-budget,2026-10-10,
+DE,2024,military_expenditure,88.46,billion,USD,final,SIPRI-MILEX-MACRO,https://www.macrotrends.net/global-metrics/countries/deu/germany/military-spending-defense-budget,2026-10-10,SIPRI also cited ~$88.5 bn / ~1.9% GDP; 4th largest global spender
+DE,2025,military_expenditure,114,billion,USD,estimate_or_preliminary,SIPRI-MILEX-2025,https://www.sipri.org/sites/default/files/2026-04/2604_milex_2025.pdf,2026-10-10,SIPRI Trends 2025 fact sheet: Germany ~$114 bn; ~2.3% of GDP; YoY +24%
+DE,2025,military_expenditure_share_of_gdp,2.3,percent,share of GDP,estimate_or_preliminary,SIPRI-MILEX-2025,https://www.sipri.org/sites/default/files/2026-04/2604_milex_2025.pdf,2026-10-10,Do not mix with NATO Table 3 GDP shares without noting methodology difference
